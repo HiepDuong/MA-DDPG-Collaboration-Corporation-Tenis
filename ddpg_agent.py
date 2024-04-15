@@ -13,15 +13,15 @@ LR_ACTOR = 1e-4        # learning rate of the actor
 LR_CRITIC = 1e-3        # learning rate of the critic
 WEIGHT_DECAY = 0        # L2 weight decay
 GAMMA = 0.99            # discount factor
-TAU = 1e-3           # for soft update of target parameters
-UPDATE_EVERY =  1
-UPDATE_COUNT = 1
+TAU = 1e-3     # for soft update of target parameters
+UPDATE_EVERY =  10
+UPDATE_COUNT = 10
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Agent():
     """Interacts with and learns from the environment."""
     
-    def __init__(self, state_size, common_memory, batch_size, action_size):
+    def __init__(self, state_size, random_seed, common_memory, batch_size, action_size):
         """Initialize an Agent object.
         
         Params
@@ -34,13 +34,13 @@ class Agent():
         self.batch_size = batch_size
 
         # Actor Network (w/ Target Network)
-        self.actor_local = Actor(state_size, action_size).to(device)
-        self.actor_target = Actor(state_size, action_size).to(device)
+        self.actor_local = Actor(state_size, action_size, random_seed).to(device)
+        self.actor_target = Actor(state_size, action_size, random_seed).to(device)
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=LR_ACTOR)
 
         # Critic Network (w/ Target Network)
-        self.critic_local = Critic(state_size, action_size).to(device)
-        self.critic_target = Critic(state_size, action_size).to(device)
+        self.critic_local = Critic(state_size, action_size, random_seed).to(device)
+        self.critic_target = Critic(state_size, action_size, random_seed).to(device)
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
                 
@@ -49,13 +49,13 @@ class Agent():
 #         self.soft_update(self.actor_local, self.actor_target, TAU)
         
         # Noise process
-        self.noise = OUNoise(action_size)
+        self.noise = OUNoise(action_size, random_seed)
         
         # Replay memory
         self.memory = common_memory
         self.t_step = 0
 
-    def act(self, state):
+    def act(self, state, noise):
         """Returns actions for given state as per current policy."""
         state = torch.from_numpy(state).float().to(device)
         self.actor_local.eval()
@@ -63,7 +63,7 @@ class Agent():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
 
-        action += self.noise.sample()
+        action += noise*self.noise.sample()
         return np.clip(action, -1, 1)
 
     
@@ -147,7 +147,7 @@ class OUNoise:
     """
     Ornstein-Uhlenbeck process to add randomness (exploration) to action selection.
     """
-    def __init__(self, size, mu=0., theta=0.15, sigma=0.2):
+    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
         """
         Initialize noise parameters.
         """
@@ -155,6 +155,8 @@ class OUNoise:
         self.mu = mu * np.ones(size)
         self.theta = theta
         self.sigma = sigma
+        self.seed = random.seed(seed)
+
         self.reset() 
 
     def reset(self):
@@ -168,14 +170,14 @@ class OUNoise:
         Get noise sample.
         """
         x = self.state 
-        dx = self.theta * (self.mu - x) + self.sigma * np.array([random.random() for i in range(len(x))])
+        dx = self.theta * (self.mu - x) + self.sigma * np.random.standard_normal(self.size)
         self.state = x + dx 
         return self.state
 
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
 
-    def __init__(self, action_size, buffer_size, batch_size):
+    def __init__(self, action_size, buffer_size, batch_size, seed):
         """Initialize a ReplayBuffer object.
         Params
         ======
@@ -186,6 +188,8 @@ class ReplayBuffer:
         self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
         self.batch_size = batch_size
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
+        self.seed = random.seed(seed)
+
     
     def add(self, state, action, reward, next_state, done):
         """Add a new experience to memory."""
