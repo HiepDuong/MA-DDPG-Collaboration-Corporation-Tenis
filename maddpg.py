@@ -12,18 +12,19 @@ import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 256         # minibatch size
+BATCH_SIZE = 128        # minibatch size
 
 class MADDPG:
-    def __init__(self, state_size, action_size, num_agents):
+    def __init__(self, state_size, action_size, num_agents, random_seed):
         super(MADDPG, self).__init__()
 
         self.memory = ReplayBuffer(
             action_size = action_size,
             buffer_size=BUFFER_SIZE,
             batch_size=BATCH_SIZE,
+            seed= random_seed
         )
-        self.maddpg_agent = [Agent(state_size, self.memory, BATCH_SIZE, action_size) for _ in range(num_agents)]
+        self.maddpg_agent = [Agent(state_size, random_seed, self.memory, BATCH_SIZE, action_size) for _ in range(num_agents)]
 
         self.num_agents = num_agents
         self.state_size = state_size
@@ -36,19 +37,19 @@ class MADDPG:
         for agent in self.maddpg_agent:
             agent.reset()
 
-    def act(self, env_states):
+    def act(self, env_states, noise):
 #          return np.concatenate([
-#             agent.act(state).reshape(1, 2) 
+#             agent.act(state, noise).reshape(1, 2) 
 #             for agent, state in zip(self.maddpg_agent, env_states)
 #         ])
-        actions = [agent.act(state) for agent, state in zip(self.maddpg_agent, env_states)]
+        actions = [agent.act(state, noise) for agent, state in zip(self.maddpg_agent, env_states)]
         return actions
 
     
     def step(self, states, actions, rewards, next_states, dones):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         for i in range(self.num_agents):
-            self.maddpg_agent[i].memory.add(states[i], actions[i], rewards[i], next_states[i], dones[i])
+#             self.maddpg_agent[1-i].memory.add(states[i], actions[i], rewards[i], next_states[i], dones[i])
             self.maddpg_agent[i].step(states[i], actions[i], rewards[i], next_states[i], dones[i])
 #             Save experience for the other agents.
 
