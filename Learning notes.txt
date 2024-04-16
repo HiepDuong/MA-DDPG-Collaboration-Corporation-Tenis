@@ -1,0 +1,29 @@
+https://knowledge.udacity.com/questions/1034481
+
+Observation:
+Achieving a high maximum score is commendable, but consistency is the primary goal. For instance, if an agent consistently achieves a maximum score of 0.9 or 1 over 100 episodes, the average score will be close to 0.1. 
+This average appears to be a critical threshold for achieving higher max scores, indicating successful performance. I've determined this by monitoring np.max(score_queue) and np.max(scores) while accumulating rewards.
+
+Network Architecture - Hyperparameter
+The choice of an appropriate model architecture, such as the basic three-layer neural network, is crucial for success.
+It appears that using update_every may introduce inconsistency or even worsen performance, as discussed in this thread.
+https://knowledge.udacity.com/questions/679649
+
+
+TLDR: my following hyperparameter: 
+LR_ACTOR = 1e-4        # learning rate of the actor 
+LR_CRITIC = 2e-4        # learning rate of the critic
+WEIGHT_DECAY = 0.        # L2 weight decay
+GAMMA = 0.99            # discount factor
+TAU = 1e-3     # for soft update of target parameters
+UPDATE_EVERY =  1
+UPDATE_COUNT = 1
+
+my agent model: fc1_units=256, fc2_units=128
+
+Assessing Model Performance:
+Performance results seem to vary, with individuals achieving an average of 0.5 around 1000-5000 episodes. Therefore, a reasonable cutoff range could be between 2000 to 5000 episodes. Another method for evaluating model performance is to observe when the average score experiences an irreversible drop, such as peaking at 0.25-0.4 and then plummeting to 0.00, as discussed here.
+https://knowledge.udacity.com/questions/829167
+
+Learn from Mistakes:
+In my experience, I once achieved a maximum score of 2.x with an average of 0.26. However, subsequent episodes performed poorly, reaching an average score of 0 with no signs of recovery. It's essential to recognize such instances and consider terminating training earlier, especially when encountering inconsistency or low performance, even if it means stopping training after 10,000 episodes.
